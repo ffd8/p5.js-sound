@@ -81,8 +81,31 @@ define(function (require) {
     // components
     this.phaseAmount = undefined;
     this.oscillator = p5sound.audiocontext.createOscillator();
+
+    // custom waveforms
+    // this.waveSize = 512;
+    this.real = new Float32Array(2);
+    this.imag = new Float32Array(2);
+    // for(var i=0; i<this.real.length;i++){
+    //   this.real[i] = Math.random();
+    //   this.imag[i] = Math.random();
+    // }
+
+    this.real[0] = 0;
+    this.imag[0] = 0;
+    this.real[1] = 1;
+    this.imag[1] = 0;
+
+    this.wave = p5sound.audiocontext.createPeriodicWave(this.real, this.imag);
+
+
     this.f = freq || 440.0; // frequency
-    this.oscillator.type = type || 'sine';
+    if(type == 'custom'){
+      this.oscillator.setPeriodicWave(this.wave)
+    }else{
+      this.oscillator.type = type || 'sine';
+    }
+
     this.oscillator.frequency.setValueAtTime(this.f, p5sound.audiocontext.currentTime);
 
     // connections
@@ -135,7 +158,11 @@ define(function (require) {
       // var detune = this.oscillator.frequency.value;
       this.oscillator = p5sound.audiocontext.createOscillator();
       this.oscillator.frequency.value = Math.abs(freq);
-      this.oscillator.type = type;
+      if(type == 'custom'){
+        this.oscillator.setPeriodicWave(this.wave)
+      }else{
+        this.oscillator.type = type;
+      }
       // this.oscillator.detune.value = detune;
       this.oscillator.connect(this.output);
       time = time || 0;
@@ -396,6 +423,26 @@ define(function (require) {
 
     // set delay time to match phase:
     this.dNode.delayTime.setValueAtTime(delayAmt, now);
+  };
+
+  p5.Oscillator.prototype.setWaveTable = function(wavetable) {
+    //this.stop(now);
+    if(wavetable.length > 0){
+      this.real = new Float32Array(wavetable.length);
+      this.imag = new Float32Array(wavetable.length);
+
+      for(var i=0; i < wavetable.length; i++){
+        this.real[i] = wavetable[i];
+        this.imag[i] = wavetable[i];
+      }
+
+      this.wave = p5sound.audiocontext.createPeriodicWave(this.real, this.imag);
+      //this.start();
+    }
+  };
+
+  p5.Oscillator.prototype.getWaveTable = function(wavetable) {
+    return this.real;
   };
 
   // ========================== //

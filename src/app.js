@@ -38,7 +38,6 @@ define(function (require) {
   require('audioVoice');
   require('monosynth');
   require('polysynth');
-  require('wavesynth');
 
   return p5SOUND;
 

@@ -13,25 +13,40 @@ define(function (require) {
     this.phase = 0;
     this.sample_rate = 44100;
     this.context = p5sound.audiocontext;
-    this.node = this.context.createScriptProcessor(512, 2, 2);
-    this.node.onaudioprocess = function(audioContext) { 
-      that.process(audioContext)
-      };
+    // this.node = this.context.createScriptProcessor(512, 2, 2);
+    // this.node.onaudioprocess = function(audioContext) { 
+    //   that.process(audioContext)
+    //   };
 
     // https://medium.com/web-audio/you-dont-need-that-scriptprocessor-61a836e28b42
-    // this.node = p5sound.context.createBufferSource();
-    // this.buffer = p5sound.context.createBuffer(1, 512, this.sample_rate);
+    // this.node = this.context.createBufferSource();
+    // this.buffer = this.context.createBuffer(1, 4096, this.context.sampleRate);
     // this.wave = this.buffer.getChannelData(0);
 
     // for (var i = 0; i < 4096; i++) {
-    //  data[i] = Math.random();
+    //  this.wave[i] = 0;
+    //  if(i%15==0){
+    //   this.wave[i] = .5;
+    //  }
     // }
     // this.node.buffer = this.buffer;
     // this.node.loop = true;
-    // this.node.connect(p5sound.context.destination);
+    // this.node.connect(this.context.destination);
     // this.node.start(0);
+    this.waveFormSize = 512;
+    this.real = new Array(this.waveFormSize);
+    this.imag = new Array(this.waveFormSize);
+    for(var i=0; i<this.real.length;i++){
+      this.real[i] = Math.random();
+      this.imag[i] = Math.random();
+    }
+    this.wave = this.context.createPeriodicWave(this.real, this.imag);
+    this.osc = this.context.createOscillator();
+    this.osc.setPeriodicWave(this.wave);
+    this.osc.frequency.value = 80.0;
+    // this.osc.loop = true;
+    
 
-    this.frequency = 220;
     this.amplitude = 1.0;
     this.gainNode = this.context.createGain();
     this.delayGain = this.context.createGain();
@@ -42,13 +57,12 @@ define(function (require) {
     this.filter.type = "lowpass";
     this.envTime = 1.0;
     this.isPlaying = false;
-    this.waveFormSize = 514;
-    this.wave = new Array(this.waveFormSize);
+    // this.wave = new Array(this.waveFormSize);
 
-    for (var i = 0; i < this.waveFormSize + 1 ; i++) {
+    // for (var i = 0; i < this.waveFormSize + 1 ; i++) {
 
-      this.wave[i]=Math.sin(i/(this.waveFormSize-2) * (Math.PI * 2));
-    }
+    //   this.wave[i]=Math.sin(i/(this.waveFormSize-2) * (Math.PI * 2));
+    // }
   }
 
   p5.waveSynth.prototype.waveTableSize = function(size) {
@@ -79,13 +93,17 @@ define(function (require) {
 
   //This function allows you to 'play' the waveform
   p5.waveSynth.prototype.play = function() {
+
+    
     this.node.connect(this.filter);
     this.filter.connect(this.gainNode);
     this.gainNode.connect(this.context.destination);
-    this.gainNode.connect(this.delay);
-    this.delay.connect(this.delayGain);
-    this.delayGain.connect(this.delay);
-    this.delay.connect(this.context.destination);
+    // this.gainNode.connect(this.delay);
+    // this.delay.connect(this.delayGain);
+    // this.delayGain.connect(this.delay);
+    // this.delay.connect(this.context.destination);
+    this.osc.connect(this.context.destination);
+    this.osc.start();
     this.isPlaying=true;
   }
 
@@ -111,7 +129,8 @@ define(function (require) {
 
   //This allows us to stop the waveform generator
   p5.waveSynth.prototype.stop = function() {
-    this.node.disconnect();
+    this.osc.disconnect();
+    this.osc.stop(this.context.currentTime + 1);
     this.isPlaying=false;
   }
 
