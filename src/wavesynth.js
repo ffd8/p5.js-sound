@@ -12,10 +12,10 @@ define(function (require) {
     var that = this;
     this.phase = 0;
     this.sample_rate = 44100;
-    this.context = p5sound.context;
-    this.node = p5sound.context.createScriptProcessor(512, 2, 2);
+    this.context = p5sound.audiocontext;
+    this.node = this.context.createScriptProcessor(512, 2, 2);
     this.node.onaudioprocess = function(audioContext) { 
-      that.process(p5sound.audioContext)
+      that.process(audioContext)
       };
 
     // https://medium.com/web-audio/you-dont-need-that-scriptprocessor-61a836e28b42
@@ -33,10 +33,10 @@ define(function (require) {
 
     this.frequency = 220;
     this.amplitude = 1.0;
-    this.gainNode = p5sound.context.createGain();
-    this.delayGain = p5sound.context.createGain();
-    this.filter = p5sound.context.createBiquadFilter();
-    this.delay = p5sound.context.createDelay(2);
+    this.gainNode = this.context.createGain();
+    this.delayGain = this.context.createGain();
+    this.filter = this.context.createBiquadFilter();
+    this.delay = this.context.createDelay(2);
     this.delayAmt = 0.75;
     this.delayGain.gain.value = 0.75;
     this.filter.type = "lowpass";
@@ -66,7 +66,7 @@ define(function (require) {
   //This function is the waveform generator's buffer method
   //Hack here to create new waveforms
   p5.waveSynth.prototype.process = function(audioContext) {
-    var data = p5sound.audioContext.outputBuffer.getChannelData(0);
+    var data = audioContext.outputBuffer.getChannelData(0);
     for (var i = 0; i < data.length; i++) {
       var remainder;
       this.phase += (this.waveFormSize-2) / (this.sample_rate / this.frequency);
@@ -97,16 +97,16 @@ define(function (require) {
   //This function allows you to set the amplitude of the waveform
   p5.waveSynth.prototype.setAmplitude = function(amplitude) {
 
-    this.gainNode.gain.cancelScheduledValues(p5sound.context.currentTime);
-    this.gainNode.gain.linearRampToValueAtTime(this.gainNode.gain.value, p5sound.context.currentTime);
-    this.gainNode.gain.linearRampToValueAtTime(amplitude, p5sound.context.currentTime + 10);
+    this.gainNode.gain.cancelScheduledValues(this.context.currentTime);
+    this.gainNode.gain.linearRampToValueAtTime(this.gainNode.gain.value, this.context.currentTime);
+    this.gainNode.gain.linearRampToValueAtTime(amplitude, this.context.currentTime + 10);
   }
 
   p5.waveSynth.prototype.ramp = function(amplitude, envTime) {
 
-    this.gainNode.gain.cancelScheduledValues(p5sound.context.currentTime);
-    this.gainNode.gain.linearRampToValueAtTime(this.gainNode.gain.value, p5sound.context.currentTime);
-    this.gainNode.gain.linearRampToValueAtTime(amplitude, p5sound.context.currentTime + envTime/1000.);
+    this.gainNode.gain.cancelScheduledValues(this.context.currentTime);
+    this.gainNode.gain.linearRampToValueAtTime(this.gainNode.gain.value, this.context.currentTime);
+    this.gainNode.gain.linearRampToValueAtTime(amplitude, this.context.currentTime + envTime/1000.);
   }
 
   //This allows us to stop the waveform generator
@@ -133,11 +133,11 @@ define(function (require) {
   }
 
   p5.waveSynth.prototype.filterRamp = function(freq, envTime) {
-    this.filter.frequency.cancelScheduledValues(p5sound.context.currentTime);
-    this.filter.frequency.linearRampToValueAtTime(this.filter.frequency.value, p5sound.context.currentTime);   // THIS IS THE CHANGE FROM PREVIOUS CODE EXAMPLE
-    this.filter.frequency.linearRampToValueAtTime(freq, p5sound.context.currentTime + envTime/1000.);
+    this.filter.frequency.cancelScheduledValues(this.context.currentTime);
+    this.filter.frequency.linearRampToValueAtTime(this.filter.frequency.value, this.context.currentTime);   // THIS IS THE CHANGE FROM PREVIOUS CODE EXAMPLE
+    this.filter.frequency.linearRampToValueAtTime(freq, this.context.currentTime + envTime/1000.);
     //  this.filter.frequency.value = freq;
     //  this.filter.Q.value = res;
   }
-  
+
 });
