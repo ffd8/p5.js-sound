@@ -81,26 +81,17 @@ define(function (require) {
     // components
     this.phaseAmount = undefined;
     this.oscillator = p5sound.audiocontext.createOscillator();
-
-    // custom waveforms
-    // this.waveSize = 512;
-    this.real = new Float32Array(2);
-    this.imag = new Float32Array(2);
-    // for(var i=0; i<this.real.length;i++){
-    //   this.real[i] = Math.random();
-    //   this.imag[i] = Math.random();
-    // }
-
-    this.real[0] = 0;
-    this.imag[0] = 0;
-    this.real[1] = 1;
-    this.imag[1] = 0;
-
-    this.wave = p5sound.audiocontext.createPeriodicWave(this.real, this.imag);
-
-
     this.f = freq || 440.0; // frequency
     if(type == 'custom'){
+      // custom waveforms
+      // this.real = new Float64Array(2);
+      // this.imag = new Float64Array(2);
+
+      // this.real[0] = 0;
+      // this.imag[0] = 0;
+      // this.real[1] = 1;
+      // this.imag[1] = 0;
+      this.wave = p5sound.audiocontext.createPeriodicWave([0], [0], {disableNormalization: true});
       this.oscillator.setPeriodicWave(this.wave)
     }else{
       this.oscillator.type = type || 'sine';
@@ -158,15 +149,18 @@ define(function (require) {
       // var detune = this.oscillator.frequency.value;
       this.oscillator = p5sound.audiocontext.createOscillator();
       this.oscillator.frequency.value = Math.abs(freq);
+
       if(type == 'custom'){
-        this.oscillator.setPeriodicWave(this.wave)
+        this.oscillator.setPeriodicWave(this.wave);
       }else{
         this.oscillator.type = type;
       }
       // this.oscillator.detune.value = detune;
+     // this.phase(0);
       this.oscillator.connect(this.output);
       time = time || 0;
-      this.oscillator.start(time + p5sound.audiocontext.currentTime);
+      // this.oscillator.start(time + p5sound.audiocontext.currentTime);
+      this.oscillator.start(0);
       this.freqNode = this.oscillator.frequency;
 
       // if other oscillators are already connected to this osc's freq
@@ -425,25 +419,134 @@ define(function (require) {
     this.dNode.delayTime.setValueAtTime(delayAmt, now);
   };
 
+  // add comments
   p5.Oscillator.prototype.setWaveTable = function(wavetable) {
-    //this.stop(now);
     if(wavetable.length > 0){
-      this.real = new Float32Array(wavetable.length);
-      this.imag = new Float32Array(wavetable.length);
 
-      for(var i=0; i < wavetable.length; i++){
-        this.real[i] = wavetable[i];
-        this.imag[i] = wavetable[i];
-      }
+      var ft = new DFT(wavetable.length, 44100);
+      ft.forward(wavetable);
 
-      this.wave = p5sound.audiocontext.createPeriodicWave(this.real, this.imag);
-      //this.start();
+
+      // this.real = new Float32Array(wavetable.length);
+      // this.imag = new Float32Array(wavetable.length);
+
+      // for(var i=0; i < wavetable.length; i++){
+      //   this.real[i] = wavetable[i];
+      //   // this.imag[i] = -wavetable[i];
+      // }
+
+      this.wave = p5sound.audiocontext.createPeriodicWave(ft.real, ft.imag, {disableNormalization: true});
+      this.start(0);
     }
   };
 
   p5.Oscillator.prototype.getWaveTable = function(wavetable) {
     return this.real;
   };
+
+  // dsp.js
+  // Fourier Transform Module used by DFT, FFT, RFFT
+  function FourierTransform(bufferSize, sampleRate) {
+    this.bufferSize = bufferSize;
+    this.sampleRate = sampleRate;
+    this.bandwidth  = 2 / bufferSize * sampleRate / 2;
+
+    this.spectrum   = new Float64Array(bufferSize/2);
+    this.real       = new Float64Array(bufferSize);
+    this.imag       = new Float64Array(bufferSize);
+
+    this.peakBand   = 0;
+    this.peak       = 0;
+
+    /**
+     * Calculates the *middle* frequency of an FFT band.
+     *
+     * @param {Number} index The index of the FFT band.
+     *
+     * @returns The middle frequency in Hz.
+     */
+    this.getBandFrequency = function(index) {
+      return this.bandwidth * index + this.bandwidth / 2;
+    };
+
+    this.calculateSpectrum = function() {
+      var spectrum  = this.spectrum,
+          real      = this.real,
+          imag      = this.imag,
+          bSi       = 2 / this.bufferSize,
+          sqrt      = Math.sqrt,
+          rval, 
+          ival,
+          mag;
+
+      for (var i = 0, N = bufferSize/2; i < N; i++) {
+        rval = real[i];
+        ival = imag[i];
+        mag = bSi * sqrt(rval * rval + ival * ival);
+
+        if (mag > this.peak) {
+          this.peakBand = i;
+          this.peak = mag;
+        }
+
+        spectrum[i] = mag;
+      }
+    };
+  }
+
+  /**
+   * DFT is a class for calculating the Discrete Fourier Transform of a signal.
+   *
+   * @param {Number} bufferSize The size of the sample buffer to be computed
+   * @param {Number} sampleRate The sampleRate of the buffer (eg. 44100)
+   *
+   * @constructor
+   */
+  function DFT(bufferSize, sampleRate) {
+    FourierTransform.call(this, bufferSize, sampleRate);
+
+    var N = bufferSize/2 * bufferSize;
+    var TWO_PI = 2 * Math.PI;
+
+    this.sinTable = new Float64Array(N);
+    this.cosTable = new Float64Array(N);
+
+    for (var i = 0; i < N; i++) {
+      this.sinTable[i] = Math.sin(i * TWO_PI / bufferSize);
+      this.cosTable[i] = Math.cos(i * TWO_PI / bufferSize);
+    }
+  }
+
+  /**
+   * Performs a forward transform on the sample buffer.
+   * Converts a time domain signal to frequency domain spectra.
+   *
+   * @param {Array} buffer The sample buffer
+   *
+   * @returns The frequency spectrum array
+   */
+  DFT.prototype.forward = function(buffer) {
+    var real = this.real, 
+        imag = this.imag,
+        rval,
+        ival;
+
+    for (var k = 0; k < this.bufferSize/2; k++) {
+      rval = 0.0;
+      ival = 0.0;
+
+      for (var n = 0; n < buffer.length; n++) {
+        rval += this.cosTable[k*n] * buffer[n];
+        ival += this.sinTable[k*n] * buffer[n];
+      }
+
+      real[k] = rval;
+      imag[k] = ival;
+    }
+
+    return this.calculateSpectrum();
+  };
+
 
   // ========================== //
   // SIGNAL MATH FOR MODULATION //
